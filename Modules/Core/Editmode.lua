@@ -554,7 +554,7 @@ function Module:CreateGrid()
     dimmer:EnableMouse(false)
     local dimTexture = dimmer:CreateTexture(nil, 'BACKGROUND')
     dimTexture:SetAllPoints(dimmer)
-    dimTexture:SetColorTexture(0, 0, 0, 0.52)
+    dimTexture:SetColorTexture(0, 0, 0, 0.34)
     dimmer.Texture = dimTexture
     dimmer:Hide()
     Module.EditModeDimmer = dimmer
@@ -766,6 +766,13 @@ function Module:CreateChangelogFrame()
         })
     end
 
+    -- Keep the normal Edit Mode world brightness unchanged. Only the
+    -- changelog panel receives the stronger dark fill for text readability.
+    local darkBackground = frameRef:CreateTexture(nil, 'BACKGROUND', nil, 1)
+    darkBackground:SetPoint('TOPLEFT', frameRef, 'TOPLEFT', 12, -12)
+    darkBackground:SetPoint('BOTTOMRIGHT', frameRef, 'BOTTOMRIGHT', -12, 11)
+    darkBackground:SetColorTexture(0.015, 0.015, 0.015, 0.94)
+
     local title = frameRef:CreateFontString(nil, 'OVERLAY', 'GameFontNormalLarge')
     title:SetPoint('TOP', frameRef, 'TOP', 0, -18)
     title:SetText('DragonflightUI_Luna Changelog')
@@ -837,7 +844,8 @@ function Module:CreateChangelogFrame()
         '',
         '|cffffd200HUD Edit Mode|r',
         '- Restored missing action-bar and bottom-HUD selections for affected V1.0 profiles.',
-        '- Added stronger white selection fills and increased the background dimming for readability.',
+        '- Added stronger white selection fills while keeping the normal Edit Mode world brightness.',
+        '- Added a dedicated darker background only to the opened changelog panel.',
         '- Fixed Edit Mode startup and deferred-refresh errors.',
         '- Added the complete V1.1 release notes to the in-game changelog.',
         '',
@@ -904,6 +912,7 @@ function Module:CreateChangelogFrame()
     frameRef.DiscordLink = discordLink
     frameRef.ScrollFrame = scroll
     frameRef.Content = content
+    frameRef.DarkBackground = darkBackground
     frameRef:Hide()
 
     table.insert(UISpecialFrames, frameRef:GetName())

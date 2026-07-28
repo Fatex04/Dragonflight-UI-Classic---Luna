@@ -20,7 +20,8 @@
 ### HUD Edit Mode
 
 - Re-enabled missing action-bar, stance, pet, possess, bag, micro-menu, XP, and reputation selections for affected V1.0 profiles.
-- Added stronger white selection fills and increased the non-interactive background dimming to 52% for readability.
+- Added stronger white selection fills while keeping the normal Edit Mode world brightness.
+- Added a dedicated darker background only to the opened changelog panel for readability.
 - Fixed an Edit Mode startup error when its frame or grid was not ready.
 - Deferred per-system Edit Mode refreshes to avoid combat taint and startup stalls.
 - Added the complete V1.1 release notes to the in-game changelog window.
