@@ -1,5 +1,18 @@
 # DragonflightUI_Luna Changelog
 
+## DragonflightUI_Luna V1.3 - 11 September 2026
+
+- Restored Action Bar 1 click access by disabling mouse input on empty Blizzard bar backgrounds.
+- Prevented duplicate Blizzard selection overlays for Luna-managed action bars, bags, stance, pet, possess and flight-path stop controls; kept these overlays non-interactive outside Edit Mode.
+- Fixed bag-bar snapping after login, loading screens and native layout callbacks, including cached callbacks; restored bag scale and keyring orientation and deferred combat-time repairs.
+- Kept chat position and size persistent through late native layout resets, login and loading screens; saved explicit moves and resizes without treating automatic resets as user changes, and preserved layouts whose coordinates match AceDB defaults.
+- Prevented stale deferred Edit Mode callbacks from reopening or hiding frames after rapid mode changes or loading-screen cleanup.
+- Deferred protected mover cleanup and flight-path button layout changes until combat ends, fixing the logged StopMovingOrSizing error.
+- Preserved native flight-path stop button events and visibility, restored its Luna anchor after native layout changes, and avoided displaying a second preview beside the real button.
+- Fixed the logged alternate mana-bar initialization error by detecting modern and legacy status-bar APIs and removing duplicate initialization.
+- Updated addon metadata and the in-game changelog to V1.3; synchronized the installed package with the repository copyright notice.
+- Added Lua 5.1 syntax checks and simulated regression coverage for layout persistence, input overlays, combat deferral, Edit Mode transitions and status-bar API compatibility.
+
 ## DragonflightUI_Luna V1.1 - 28 July 2026
 
 ### Combat and group safety

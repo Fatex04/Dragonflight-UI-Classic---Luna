@@ -171,7 +171,7 @@ function Module:OnInitialize()
     self.db = DF.db:RegisterNamespace(mName, defaults)
     -- AceDB omits values that equal their defaults when writing SavedVariables,
     -- so an explicitly saved 460x207 chat only retains its non-default point.
-    self.HadSavedLayout = rawget(self.db.profile, 'x') ~= nil and rawget(self.db.profile, 'y') ~= nil
+    self.HadSavedLayout = self:HasSavedLayout()
     hooksecurefunc(DF:GetModule('Config'), 'AddConfigFrame', function()
         Module:RegisterSettings()
     end)
@@ -200,42 +200,62 @@ function Module:OnEnable()
 
     Module:RegisterChatCommand('dfsavechat', 'SaveChatCommand')
 
-    if ChatFrame1 and not Module.ChatHooksInstalled then
-        ChatFrame1:HookScript('OnDragStop', function()
-            C_Timer.After(0, function() Module:CaptureChatLayout() end)
-        end)
+    self:InstallLayoutHooks()
+end
 
-        local resizeButton = _G.ChatFrame1ResizeButton or ChatFrame1.ResizeButton
-        if resizeButton and resizeButton.HookScript then
-            resizeButton:HookScript('OnMouseUp', function()
-                C_Timer.After(0, function() Module:CaptureChatLayout() end)
+function Module:HasSavedLayout()
+    local db = self.db.profile
+    if db.layoutSaved then return true end
+    -- AceDB strips default-valued fields, including either coordinate.
+    for _, key in ipairs({'x', 'y', 'anchor', 'anchorParent', 'anchorFrame', 'sizeX', 'sizeY'}) do
+        if rawget(db, key) ~= nil then return true end
+    end
+    return false
+end
+
+function Module:IsEditingChat()
+    return self.ChatInteraction or MOVING_CHATFRAME == ChatFrame1 or
+        (EditModeManagerFrame and EditModeManagerFrame:IsShown())
+end
+
+function Module:InstallLayoutHooks()
+    if not ChatFrame1 or self.ChatHooksInstalled then return end
+    self.ChatHooksInstalled = true
+    local function beginInteraction()
+        Module.ChatInteraction = true
+    end
+    local function finishInteraction()
+        -- Capture synchronously before a queued native layout can overwrite it.
+        Module:CaptureChatLayout()
+        Module.ChatInteraction = false
+    end
+    for _, method in ipairs({'StartMoving', 'StartSizing'}) do
+        hooksecurefunc(ChatFrame1, method, beginInteraction)
+    end
+    hooksecurefunc(ChatFrame1, 'StopMovingOrSizing', function()
+        if Module.ChatInteraction then finishInteraction() end
+    end)
+    for _, name in ipairs({'FCF_StopDragging', 'FCF_StopResize'}) do
+        if type(_G[name]) == 'function' then
+            hooksecurefunc(name, function(chatFrame)
+                if chatFrame == ChatFrame1 then finishInteraction() end
             end)
         end
-        Module.ChatHooksInstalled = true
     end
-
-    if type(FCF_StopResize) == 'function' and not Module.ResizeHookInstalled then
-        hooksecurefunc('FCF_StopResize', function(chatFrame)
-            if chatFrame == ChatFrame1 then C_Timer.After(0, function() Module:CaptureChatLayout() end) end
+    for _, method in ipairs({'SetPoint', 'SetSize', 'SetWidth', 'SetHeight'}) do
+        hooksecurefunc(ChatFrame1, method, function()
+            if not Module.ApplyingChatLayout and not Module:IsEditingChat() then
+                Module:ScheduleLayoutRestore()
+            end
         end)
-        Module.ResizeHookInstalled = true
     end
-
-    if type(FCF_SavePositionAndDimensions) == 'function' and not Module.PositionSaveHookInstalled then
-        hooksecurefunc('FCF_SavePositionAndDimensions', function(chatFrame)
-            if chatFrame ~= ChatFrame1 or Module.ApplyingChatLayout or not Module.WorldEntered then return end
-            if GetTime() < (Module.SuppressCapturesUntil or 0) then return end
-
-            -- Blizzard calls this after moving a chat window by its tab and
-            -- after Edit Mode changes. Capture on the next frame, once its
-            -- final anchors and dimensions have been committed.
-            Module.ChatCaptureGeneration = (Module.ChatCaptureGeneration or 0) + 1
-            local generation = Module.ChatCaptureGeneration
-            C_Timer.After(0, function()
-                if generation == Module.ChatCaptureGeneration then Module:CaptureChatLayout() end
-            end)
+    if EditModeManagerFrame then
+        EditModeManagerFrame:HookScript('OnShow', function()
+            -- Start the editor at Luna's saved position, while retaining its
+            -- native drag, resize and Save/Cancel controls.
+            if Module:HasSavedLayout() then Module:ApplySettings() end
         end)
-        Module.PositionSaveHookInstalled = true
+        EditModeManagerFrame:HookScript('OnHide', finishInteraction)
     end
 end
 
@@ -274,6 +294,11 @@ end
 
 function Module:ApplySettingsInternal(sub, key)
     if not ChatFrame1 then return end
+    if not Module.WorldEntered then return end
+    if InCombatLockdown() then
+        Module.PendingLayoutRestore = true
+        return
+    end
     local db = Module.db.profile
 
     local parent;
@@ -294,7 +319,6 @@ function Module:ApplySettingsInternal(sub, key)
     ChatFrame1:SetPoint(db.anchor or 'BOTTOMLEFT', parent, db.anchorParent or 'BOTTOMLEFT', x, y)
     ChatFrame1:SetSize(width, height)
     ChatFrame1:SetUserPlaced(true)
-    if type(FCF_SetLocked) == 'function' then FCF_SetLocked(ChatFrame1, true) end
 
     -- Keep Blizzard's own chat cache in agreement with DragonflightUI. This
     -- prevents a later loading screen from restoring an older default point.
@@ -307,7 +331,7 @@ function Module:ApplySettingsInternal(sub, key)
 end
 
 function Module:CaptureChatLayout()
-    if Module.ApplyingChatLayout or not ChatFrame1 or not ChatFrame1.GetPoint then return end
+    if Module.ApplyingChatLayout or not Module.WorldEntered or not ChatFrame1 or not ChatFrame1.GetPoint then return end
 
     local point, relativeTo, relativePoint, x, y = ChatFrame1:GetPoint(1)
     local width, height = ChatFrame1:GetSize()
@@ -327,6 +351,7 @@ function Module:CaptureChatLayout()
     db.y = y
     db.sizeX = width
     db.sizeY = height
+    db.layoutSaved = true
     Module.HadSavedLayout = true
 end
 
@@ -336,13 +361,12 @@ function Module:SaveChatCommand()
 end
 
 function Module:ScheduleLayoutRestore()
-    Module.LayoutRestoreGeneration = (Module.LayoutRestoreGeneration or 0) + 1
-    local generation = Module.LayoutRestoreGeneration
-    for _, delay in ipairs({0, 0.25, 1.0}) do
-        C_Timer.After(delay, function()
-            if generation == Module.LayoutRestoreGeneration and Module.HadSavedLayout then Module:ApplySettings() end
-        end)
-    end
+    if not Module.WorldEntered or not Module:HasSavedLayout() or Module.LayoutRestoreQueued then return end
+    Module.LayoutRestoreQueued = true
+    C_Timer.After(0, function()
+        Module.LayoutRestoreQueued = false
+        if Module.WorldEntered and not Module:IsEditingChat() then Module:ApplySettings() end
+    end)
 end
 
 local frame = CreateFrame('FRAME', 'DragonflightUIChatFrame', UIParent)
@@ -378,18 +402,21 @@ function frame:OnEvent(event, arg1)
     -- print('event', event)
     if event == 'PLAYER_ENTERING_WORLD' then
         Module.WorldEntered = true
-        -- Blizzard may save its temporary/default point while restoring chat
-        -- windows. Do not let those startup writes replace the user's layout.
-        Module.SuppressCapturesUntil = GetTime() + 1.25
-        if Module.HadSavedLayout then
+        if Module:HasSavedLayout() then
             Module:ScheduleLayoutRestore()
         else
             -- On a first install, adopt the user's Blizzard chat layout instead
             -- of replacing it with an arbitrary addon default.
             C_Timer.After(1.0, function()
-                if not Module.HadSavedLayout then Module:CaptureChatLayout() end
+                if not Module:HasSavedLayout() then Module:CaptureChatLayout() end
             end)
         end
+    elseif event == 'PLAYER_LEAVING_WORLD' then
+        Module.WorldEntered = false
+        Module.ChatInteraction = false
+    elseif event == 'PLAYER_REGEN_ENABLED' and Module.PendingLayoutRestore then
+        Module.PendingLayoutRestore = false
+        Module:ScheduleLayoutRestore()
     end
 end
 frame:SetScript('OnEvent', frame.OnEvent)
@@ -403,6 +430,8 @@ end
 
 function Module:Wrath()
     frame:RegisterEvent('PLAYER_ENTERING_WORLD')
+    frame:RegisterEvent('PLAYER_LEAVING_WORLD')
+    frame:RegisterEvent('PLAYER_REGEN_ENABLED')
 end
 
 function Module:Cata()

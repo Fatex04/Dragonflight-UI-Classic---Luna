@@ -341,7 +341,7 @@ function DragonflightUIEditModeSystemSelectionBaseMixin:OnLoad()
     self.IsDFEditModeSelection = true;
     self:SetFrameStrata('HIGH')
     self:SetFrameLevel(50)
-    self:EnableMouse(true)
+    self:EnableMouse(false)
     if self.SetHitRectInsets then self:SetHitRectInsets(0, 0, 0, 0) end
     -- print('DFEditModeSystemSelectionBaseMixin:OnLoad()', self.parent:GetName())
     if self.Label then
@@ -386,6 +386,7 @@ function DragonflightUIEditModeSystemSelectionBaseMixin:OnLoad()
         local value = editValue and state[self.AdvancedName]
 
         self:ShowHighlighted()
+        self:EnableMouse(value and true or false)
         self:SetShown(value)
 
         if value then
@@ -405,9 +406,11 @@ function DragonflightUIEditModeSystemSelectionBaseMixin:OnLoad()
         -- Selection callbacks are broadcast to dozens of systems at once.
         -- Spread the expensive layout work across frames and never mutate
         -- protected parents while combat lockdown is active.
+        self.EditModeGeneration = (self.EditModeGeneration or 0) + 1
+        local generation = self.EditModeGeneration
         if not InCombatLockdown() then
             C_Timer.After(0, function()
-                if InCombatLockdown() or not self.parent then return end
+                if generation ~= self.EditModeGeneration or InCombatLockdown() or not self.parent then return end
 
                 if self.parent.SetEditMode then
                     self.parent:SetEditMode(value and true or false)

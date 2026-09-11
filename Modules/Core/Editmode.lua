@@ -442,15 +442,19 @@ function Module:HideCustomEditModeSurfaces()
     end
 
     for _, selection in ipairs(self.SelectionFrames or {}) do
+        selection.EditModeGeneration = (selection.EditModeGeneration or 0) + 1
+        selection:EnableMouse(false)
         selection.isDragging = false
         selection.CenterSnapX = nil
         selection.CenterSnapY = nil
         selection:StopMovingOrSizing()
 
         local parent = selection:GetParent()
-        if parent then
+        if parent and not InCombatLockdown() then
             parent:StopMovingOrSizing()
             if selection.StartMovable ~= nil then parent:SetMovable(selection.StartMovable) end
+        elseif parent then
+            self.PendingParentCleanup = true
         end
 
         selection:Hide()
@@ -513,6 +517,10 @@ function frame:OnEvent(event, arg1, arg2, arg3)
     if event == 'PLAYER_REGEN_DISABLED' then
         Module:CombatHandler(true)
     elseif event == 'PLAYER_REGEN_ENABLED' then
+        if Module.PendingParentCleanup then
+            Module.PendingParentCleanup = false
+            Module:HideCustomEditModeSurfaces()
+        end
         Module:CombatHandler(false)
     elseif event == 'PLAYER_ENTERING_WORLD' then
         Module:HideCustomEditModeSurfaces()
@@ -827,6 +835,19 @@ function Module:CreateChangelogFrame()
     changelogText:SetJustifyV('TOP')
     changelogText:SetSpacing(4)
     changelogText:SetText(table.concat({
+        '|cffffd200DragonflightUI_Luna V1.3 - 11 September 2026|r',
+        '',
+        '- Restored Action Bar 1 click access by disabling mouse input on empty Blizzard bar backgrounds.',
+        '- Prevented duplicate Blizzard selection overlays for Luna-managed action bars, bags, stance, pet, possess and flight-path stop controls; kept these overlays non-interactive outside Edit Mode.',
+        '- Fixed bag-bar snapping after login, loading screens and native layout callbacks, including cached callbacks; restored bag scale and keyring orientation and deferred combat-time repairs.',
+        '- Kept chat position and size persistent through late native layout resets, login and loading screens; saved explicit moves and resizes without treating automatic resets as user changes, and preserved layouts whose coordinates match AceDB defaults.',
+        '- Prevented stale deferred Edit Mode callbacks from reopening or hiding frames after rapid mode changes or loading-screen cleanup.',
+        '- Deferred protected mover cleanup and flight-path button layout changes until combat ends, fixing the logged StopMovingOrSizing error.',
+        '- Preserved native flight-path stop button events and visibility, restored its Luna anchor after native layout changes, and avoided displaying a second preview beside the real button.',
+        '- Fixed the logged alternate mana-bar initialization error by detecting modern and legacy status-bar APIs and removing duplicate initialization.',
+        '- Updated addon metadata and the in-game changelog to V1.3; synchronized the installed package with the repository copyright notice.',
+        '- Added Lua 5.1 syntax checks and simulated regression coverage for layout persistence, input overlays, combat deferral, Edit Mode transitions and status-bar API compatibility.',
+        '',
         '|cffffd200DragonflightUI_Luna V1.1 - 28 July 2026|r',
         '',
         '|cffffd200Combat and group safety|r',

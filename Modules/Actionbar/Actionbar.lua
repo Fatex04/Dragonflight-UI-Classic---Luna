@@ -2720,27 +2720,25 @@ function Module:AddEditMode()
         addNativeSystem(MultiBar6)
         addNativeSystem(MultiBar7)
         addNativeSystem(BagsBar)
-
-        local function setNativeSelectionsSuppressed(suppressed)
-            for _, systemFrame in ipairs(nativeSystems) do
-                local selection = systemFrame and systemFrame.Selection
-                if selection then selection:EnableMouse(not suppressed) end
-            end
-        end
+        addNativeSystem(StanceBar)
+        addNativeSystem(PetActionBar)
+        addNativeSystem(PossessActionBar)
+        addNativeSystem(MainMenuBarVehicleLeaveButton)
 
         local function suppressOffsetNativeSelections()
-            if not EditModeModule.IsEditMode then return end
+            if InCombatLockdown() then
+                Module.PendingNativeSelectionCleanup = true
+                return
+            end
             for _, systemFrame in ipairs(nativeSystems) do
-                if systemFrame then
-                    if type(systemFrame.SetSelectionShown) == 'function' then
-                        systemFrame:SetSelectionShown(false)
-                    elseif systemFrame.Selection then
-                        systemFrame.Selection:Hide()
-                    end
+                local selection = systemFrame.Selection
+                if selection then
+                    selection:EnableMouse(false)
+                    selection:Hide()
                 end
             end
-            setNativeSelectionsSuppressed(true)
         end
+        Module.SuppressNativeSelections = suppressOffsetNativeSelections
 
         -- Blizzard can rebuild and show these selections more than once while
         -- entering Edit Mode. Keep their invisible hit areas from competing
@@ -2749,10 +2747,12 @@ function Module:AddEditMode()
             local selection = systemFrame and systemFrame.Selection
             if selection and not selection.DragonflightUISuppressionHooked then
                 selection.DragonflightUISuppressionHooked = true
-                hooksecurefunc(selection, 'Show', function(shownSelection)
-                    if EditModeModule.IsEditMode then
+                selection:HookScript('OnShow', function(shownSelection)
+                    if not InCombatLockdown() then
                         shownSelection:EnableMouse(false)
                         shownSelection:Hide()
+                    else
+                        Module.PendingNativeSelectionCleanup = true
                     end
                 end)
             end
@@ -2774,11 +2774,7 @@ function Module:AddEditMode()
         end
 
         EditModeModule:RegisterCallback('OnEditMode', function(_, enabled)
-            if enabled then
-                C_Timer.After(0, suppressOffsetNativeSelections)
-            else
-                setNativeSelectionsSuppressed(false)
-            end
+            suppressOffsetNativeSelections()
             queueCustomActionbarRefresh()
         end, self)
 
@@ -2790,6 +2786,7 @@ function Module:AddEditMode()
                 queueCustomActionbarRefresh()
             end)
         end
+        suppressOffsetNativeSelections()
     end
 end
 
@@ -3132,6 +3129,13 @@ function Module.ChangeActionbar()
         end
 
         if MainMenuBar then MainMenuBar:SetSize(1, 1) end
+        -- MainActionBar remains alive for secure paging/events, but its empty
+        -- level-50 background otherwise intercepts clicks above our reparented
+        -- buttons. Child buttons retain their own mouse handling.
+        for _, name in ipairs({'MainActionBar', 'MainMenuBar', 'BagsBar'}) do
+            local nativeBar = _G[name]
+            if nativeBar then nativeBar:EnableMouse(false) end
+        end
 
         -- Classic Era 1.15.9 moved XP and reputation tracking to the
         -- StatusTrackingBar containers. Older clients still expose the legacy
@@ -3345,11 +3349,15 @@ end
 function frame:OnEvent(event, arg1)
     -- print('event', event)
     if event == 'PLAYER_ENTERING_WORLD' then
-        -- ActivateAllActionbars() 
+        Module:QueueBagLayoutRestore()
     elseif event == 'SETTINGS_LOADED' then
         -- print('SETTINGS_LOADED')
         -- Module:CheckActionbarSettingsCVars()
     elseif event == 'PLAYER_REGEN_ENABLED' then
+        if Module.PendingNativeSelectionCleanup and Module.SuppressNativeSelections then
+            Module.PendingNativeSelectionCleanup = false
+            Module.SuppressNativeSelections()
+        end
         --
         -- print('PLAYER_REGEN_ENABLED', self.ShouldUpdate)
         if frame.ShouldUpdate then
@@ -3725,15 +3733,22 @@ function Module.ChangeBackpack()
     if BagsBar and type(BagsBar.Layout) == 'function' and not Module.BagsBarLayoutHooked then
         Module.BagsBarLayoutHooked = true
         hooksecurefunc(BagsBar, 'Layout', function()
-            if Module.UpdatingBagState or Module.BagLayoutRefreshQueued then return end
-            if not InCombatLockdown() and Module.db and Module.db.profile and Module.db.profile.bags then
-                Module.BagLayoutRefreshQueued = true
-                C_Timer.After(0, function()
-                    Module.BagLayoutRefreshQueued = false
-                    if not InCombatLockdown() then Module.UpdateBagState(Module.db.profile.bags) end
-                end)
-            end
+            Module:QueueBagLayoutRestore()
         end)
+    end
+
+    -- Blizzard also registers the original Layout function as an event
+    -- callback. Such cached calls bypass a hook on BagsBar.Layout itself.
+    -- Observe the affected buttons so these updates cannot escape restoration.
+    if DF.Era and not Module.BagAnchorHooksInstalled then
+        Module.BagAnchorHooksInstalled = true
+        local buttons = {MainMenuBarBackpackButton, CharacterBag0Slot, CharacterBag1Slot,
+                         CharacterBag2Slot, CharacterBag3Slot, KeyRingButton}
+        for _, button in ipairs(buttons) do
+            for _, method in ipairs({'SetPoint', 'SetParent', 'SetScale', 'SetSize'}) do
+                hooksecurefunc(button, method, function() Module:QueueBagLayoutRestore() end)
+            end
+        end
     end
 
     if DF.API.Version.IsTBC then
@@ -3844,6 +3859,19 @@ function Module.HookBags()
     hooksecurefunc('UpdateContainerFrameAnchors', UpdateContainerFrameAnchorsModified)
 end
 
+function Module:QueueBagLayoutRestore()
+    if self.UpdatingBagState or self.BagLayoutRefreshQueued or not self.db then return end
+    if InCombatLockdown() then
+        self.PendingBagState = true
+        return
+    end
+    self.BagLayoutRefreshQueued = true
+    C_Timer.After(0, function()
+        self.BagLayoutRefreshQueued = false
+        self.UpdateBagState(self.db.profile.bags)
+    end)
+end
+
 function Module.UpdateBagState(state)
     if not state or Module.UpdatingBagState then return end
     if InCombatLockdown() then
@@ -3909,6 +3937,7 @@ function Module.UpdateBagState(state)
         slot:SetPoint('RIGHT', _G['CharacterBag' .. (i - 1) .. 'Slot'], 'LEFT', 0, 0)
     end
     if KeyRingButton then
+        if KeyRingButton.UpdateOrientation then KeyRingButton:UpdateOrientation(true) end
         KeyRingButton:SetParent(f)
         KeyRingButton:ClearAllPoints()
         KeyRingButton:SetPoint('RIGHT', CharacterBag3Slot, 'LEFT', 0, 0)

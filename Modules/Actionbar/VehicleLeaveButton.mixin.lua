@@ -175,6 +175,7 @@ function SubModuleMixin:Setup()
     self:RegisterEvent("UNIT_ENTERED_VEHICLE");
     self:RegisterEvent("UNIT_EXITED_VEHICLE");
     self:RegisterEvent("VEHICLE_UPDATE");
+    self:RegisterEvent("PLAYER_REGEN_ENABLED");
 
     local f = _G['DragonflightUIVehicleLeaveButton']
     f:SetParent(UIParent)
@@ -200,7 +201,8 @@ function SubModuleMixin:Setup()
         moduleRef = self.ModuleRef,
         showFunction = function()
             --         
-            f.FakePreview:Show()
+            self:Update()
+            f.FakePreview:SetShown(not MainMenuBarVehicleLeaveButton:IsShown())
         end,
         hideFunction = function()
             --
@@ -211,6 +213,17 @@ function SubModuleMixin:Setup()
 end
 
 function SubModuleMixin:OnEvent(event, ...)
+    if event == 'PLAYER_REGEN_ENABLED' and self.PendingUpdate then
+        self.PendingUpdate = false
+        self:Update()
+    end
+    -- Current Era owns taxi visibility and click behavior in the native
+    -- button. Keep those events intact; Luna only owns its position.
+    if DF.Era then return end
+    if InCombatLockdown() then
+        self.PendingUpdate = true
+        return
+    end
     -- print('event', event, ...)
     if ((CanExitVehicle() or UnitOnTaxi("player")) and ActionBarController_GetCurrentActionBarState() ==
         LE_ACTIONBAR_STATE_MAIN) then
@@ -232,6 +245,11 @@ end
 function SubModuleMixin:Update()
     local state = self.state;
     if not state then return end
+    if InCombatLockdown() then
+        self.PendingUpdate = true
+        return
+    end
+    self.UpdatingLayout = true
 
     local f = _G['DragonflightUIVehicleLeaveButton']
 
@@ -251,6 +269,11 @@ function SubModuleMixin:Update()
 
     local btn = _G['MainMenuBarVehicleLeaveButton'];
     btn:SetScale(state.scale)
+    if DF.Era then
+        btn:ClearAllPoints()
+        btn:SetPoint('CENTER', f, 'CENTER', 0, 0)
+    end
+    self.UpdatingLayout = false
 
     -- f:UpdateStateHandler(state)
 end
@@ -276,10 +299,30 @@ function SubModuleMixin:CreateVehicleLeaveButton()
     if DF.API.Version.IsTBC then
         addonTable:OverrideBlizzEditmode(btn, 'CENTER', f, 'CENTER', 0, 0)
     else
-        btn:UnregisterAllEvents()
+        if not DF.Era then btn:UnregisterAllEvents() end
         -- btn:SetParent(f)
         btn:ClearAllPoints()
         btn:SetPoint('CENTER', f, 'CENTER', 0, 0)
         -- btn:Show()
+    end
+    if DF.Era then
+        local function queueLayout()
+            if self.UpdatingLayout or self.LayoutQueued then return end
+            if InCombatLockdown() then self.PendingUpdate = true; return end
+            self.LayoutQueued = true
+            C_Timer.After(0, function()
+                self.LayoutQueued = false
+                self:Update()
+            end)
+        end
+        hooksecurefunc(btn, 'SetPoint', queueLayout)
+        hooksecurefunc(btn, 'SetScale', queueLayout)
+        btn:HookScript('OnShow', function()
+            f.FakePreview:Hide()
+            queueLayout()
+        end)
+        btn:HookScript('OnHide', function()
+            f.FakePreview:SetShown(f.DFEditMode and true or false)
+        end)
     end
 end

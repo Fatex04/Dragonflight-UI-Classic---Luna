@@ -1145,9 +1145,9 @@ function SubModuleMixin:AddAlternatePowerBar()
         self.cvarLabel = "STATUS_TEXT_PLAYER";
         self.capNumericDisplay = true -- DF
         AlternatePowerBar_Initialize(self);
-        if DF.API.Version.IsTBC then
+        if type(self.InitializeTextStatusBar) == 'function' then
             self:InitializeTextStatusBar()
-        else
+        elseif type(TextStatusBar_Initialize) == 'function' then
             TextStatusBar_Initialize(self);
         end
     end
@@ -1195,19 +1195,14 @@ function SubModuleMixin:AddAlternatePowerBar()
 
     -- 
     AlternatePowerBar_OnLoad(bar)
-    if DF.API.Version.IsTBC then
-        bar:InitializeTextStatusBar()
-    else
-        TextStatusBar_Initialize(bar);
-    end
 
     bar:SetScript('OnEvent', function(self, event, ...)
         -- 
         AlternatePowerBar_OnEvent(self, event, ...);
 
-        if DF.API.Version.IsTBC then
+        if type(self.TextStatusBarOnEvent) == 'function' then
             self:TextStatusBarOnEvent(event, ...);
-        else
+        elseif type(TextStatusBar_OnEvent) == 'function' then
             TextStatusBar_OnEvent(self, event, ...);
         end
     end)
@@ -1229,4 +1224,3 @@ function SubModuleMixin:HideAlternatePowerBar(hide)
         self.AlternatePowerBar:SetPoint('BOTTOMLEFT', PlayerFrame, 'BOTTOMLEFT', 114 + 6, 23 - 1);
     end
 end
-
