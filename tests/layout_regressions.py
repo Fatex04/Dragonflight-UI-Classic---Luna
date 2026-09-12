@@ -227,3 +227,28 @@ AlternatePowerBar_OnLoad({}); assert(legacyCalls==1)
 TextStatusBar_Initialize=nil; AlternatePowerBar_OnLoad({})
 ''')
 print('PASS: modern, legacy and unavailable mana status-bar initialization APIs')
+
+lua.execute('''
+DF.db={global={}}
+C_AddOns={GetAddOnMetadata=function() return '1.3.0' end}
+Module={}
+local popup=makeFrame('update notice'); popup.shown=false
+popup.ScrollFrame={SetVerticalScroll=function() end}
+function Module:CreateChangelogFrame() return popup end
+''')
+lua.execute(section('Modules/Core/Editmode.lua', 'function Module:ShowLoginUpdateNotice()', 'function Module:CreateChangelogFrame()'))
+lua.execute('''
+combat=true; Module:ShowLoginUpdateNotice()
+assert(Module.PendingUpdateNotice and not DF.db.global.lastUpdateNoticeVersion)
+combat=false; Module.IsEditMode=true; Module:ShowLoginUpdateNotice()
+assert(not DF.db.global.lastUpdateNoticeVersion)
+Module.IsEditMode=false; Module:ShowLoginUpdateNotice()
+assert(Module:CreateChangelogFrame():IsShown() and DF.db.global.lastUpdateNoticeVersion=='1.3.0')
+Module:CreateChangelogFrame():Hide(); Module:ShowLoginUpdateNotice()
+assert(not Module:CreateChangelogFrame():IsShown())
+DF.db.profile={}; Module:ShowLoginUpdateNotice()
+assert(not Module:CreateChangelogFrame():IsShown())
+DF.db.global.lastUpdateNoticeVersion='1.1.0'; Module:ShowLoginUpdateNotice()
+assert(Module:CreateChangelogFrame():IsShown())
+''')
+print('PASS: update notice once per version/account, profile independence, combat/edit deferral')

@@ -522,6 +522,7 @@ function frame:OnEvent(event, arg1, arg2, arg3)
             Module:HideCustomEditModeSurfaces()
         end
         Module:CombatHandler(false)
+        if Module.PendingUpdateNotice then Module:ShowLoginUpdateNotice() end
     elseif event == 'PLAYER_ENTERING_WORLD' then
         Module:HideCustomEditModeSurfaces()
         C_Timer.After(0, function()
@@ -530,6 +531,7 @@ function frame:OnEvent(event, arg1, arg2, arg3)
         C_Timer.After(0.25, function()
             if not Module.IsEditMode then Module:HideCustomEditModeSurfaces() end
         end)
+        C_Timer.After(1, function() Module:ShowLoginUpdateNotice() end)
     end
 end
 frame:SetScript('OnEvent', frame.OnEvent)
@@ -739,6 +741,25 @@ function Module:SetupDiscordButton()
     self.DiscordButton = button
 end
 
+function Module:ShowLoginUpdateNotice()
+    if not DF.db then return end
+    local version = C_AddOns.GetAddOnMetadata('DragonflightUI', 'Version')
+    if not version or DF.db.global.lastUpdateNoticeVersion == version then
+        self.PendingUpdateNotice = false
+        return
+    end
+    if InCombatLockdown() or self.IsEditMode then
+        self.PendingUpdateNotice = true
+        return
+    end
+    local notice = self:CreateChangelogFrame()
+    notice.ScrollFrame:SetVerticalScroll(0)
+    notice:Show()
+    -- Account-wide, independent of character and selected settings profile.
+    DF.db.global.lastUpdateNoticeVersion = version
+    self.PendingUpdateNotice = false
+end
+
 function Module:CreateChangelogFrame()
     if self.ChangelogFrame then return self.ChangelogFrame end
 
@@ -781,9 +802,14 @@ function Module:CreateChangelogFrame()
     darkBackground:SetPoint('BOTTOMRIGHT', frameRef, 'BOTTOMRIGHT', -12, 11)
     darkBackground:SetColorTexture(0.015, 0.015, 0.015, 0.94)
 
+    local logo = frameRef:CreateTexture(nil, 'ARTWORK')
+    logo:SetTexture('Interface\\AddOns\\DragonflightUI\\Textures\\Art\\luna-logo')
+    logo:SetSize(40, 40)
+    logo:SetPoint('TOPLEFT', frameRef, 'TOPLEFT', 20, -12)
     local title = frameRef:CreateFontString(nil, 'OVERLAY', 'GameFontNormalLarge')
-    title:SetPoint('TOP', frameRef, 'TOP', 0, -18)
-    title:SetText('DragonflightUI_Luna Changelog')
+    title:SetPoint('LEFT', logo, 'RIGHT', 12, 0)
+    title:SetText('Dragonflight UI Luna')
+    frameRef.Logo = logo
 
     local closeButton = CreateFrame('Button', nil, frameRef, 'UIPanelCloseButton')
     closeButton:SetPoint('TOPRIGHT', frameRef, 'TOPRIGHT', -5, -5)
@@ -837,6 +863,7 @@ function Module:CreateChangelogFrame()
     changelogText:SetText(table.concat({
         '|cffffd200DragonflightUI_Luna V1.3 - 11 September 2026|r',
         '',
+        '- Added a dismissible first-login update window with the Luna logo and Dragonflight UI Luna title; shown once per account per addon version, with combat-safe deferral.',
         '- Restored Action Bar 1 click access by disabling mouse input on empty Blizzard bar backgrounds.',
         '- Prevented duplicate Blizzard selection overlays for Luna-managed action bars, bags, stance, pet, possess and flight-path stop controls; kept these overlays non-interactive outside Edit Mode.',
         '- Fixed bag-bar snapping after login, loading screens and native layout callbacks, including cached callbacks; restored bag scale and keyring orientation and deferred combat-time repairs.',
@@ -1110,6 +1137,9 @@ function Module:SetEditMode(isEditMode)
     if not isEditMode then self:HideAlignmentGuides() end
     self:TriggerEvent(self.Event.OnEditMode, isEditMode)
     if not isEditMode and Module.InputBlocker then Module.InputBlocker:Hide() end
+    if not isEditMode and Module.PendingUpdateNotice then
+        C_Timer.After(0, function() Module:ShowLoginUpdateNotice() end)
+    end
 end
 
 function Module:AddEditModeToFrame(frameRef)

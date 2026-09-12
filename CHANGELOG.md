@@ -2,6 +2,7 @@
 
 ## DragonflightUI_Luna V1.3 - 11 September 2026
 
+- Added a dismissible first-login update window with the Luna logo and Dragonflight UI Luna title; shown once per account per addon version, with combat-safe deferral.
 - Restored Action Bar 1 click access by disabling mouse input on empty Blizzard bar backgrounds.
 - Prevented duplicate Blizzard selection overlays for Luna-managed action bars, bags, stance, pet, possess and flight-path stop controls; kept these overlays non-interactive outside Edit Mode.
 - Fixed bag-bar snapping after login, loading screens and native layout callbacks, including cached callbacks; restored bag scale and keyring orientation and deferred combat-time repairs.
