@@ -8,6 +8,50 @@ addonTable.Helper = Helper;
 -- make globally available
 _G['DragonflightUI_Helper'] = Helper;
 
+-- Keep native frames attached to Luna movers after native layout callbacks.
+-- Only restore geometry; never change native visibility or secure state drivers.
+function Helper:KeepFrameAnchored(frame, relative, scale, parent)
+    local guard = frame.DFLunaAnchorGuard
+    if not guard then
+        guard = {}
+        frame.DFLunaAnchorGuard = guard
+        local function restore()
+            if InCombatLockdown() then return end
+            local point, anchor, relativePoint, x, y = frame:GetPoint(1)
+            guard.restoring = true
+            if guard.parent and frame:GetParent() ~= guard.parent then frame:SetParent(guard.parent) end
+            if frame:GetScale() ~= guard.scale then frame:SetScale(guard.scale) end
+            if frame:GetNumPoints() ~= 1 or point ~= 'CENTER' or anchor ~= guard.relative or
+                relativePoint ~= 'CENTER' or x ~= 0 or y ~= 0 then
+                frame:ClearAllPoints()
+                frame:SetPoint('CENTER', guard.relative, 'CENTER', 0, 0)
+            end
+            guard.restoring = false
+        end
+        local function request()
+            if guard.restoring or guard.queued then return end
+            guard.queued = true
+            C_Timer.After(0, function()
+                guard.queued = false
+                restore()
+            end)
+        end
+        guard.restore = restore
+        for _, method in ipairs({'SetPoint', 'ClearAllPoints', 'SetScale', 'SetParent'}) do
+            hooksecurefunc(frame, method, request)
+        end
+        frame:HookScript('OnShow', request)
+        local events = CreateFrame('Frame')
+        guard.events = events
+        events:RegisterEvent('PLAYER_ENTERING_WORLD')
+        events:RegisterEvent('PLAYER_REGEN_ENABLED')
+        events:SetScript('OnEvent', request)
+    end
+    guard.relative, guard.scale, guard.parent = relative, scale, parent
+    frame.ignoreFramePositionManager = true
+    guard.restore()
+end
+
 function Helper:Benchmark(label, func, level, moduleRef)
     if level == nil or type(level) ~= 'number' then level = 1; end
     -- level = level or 1;
@@ -164,4 +208,3 @@ end
 --         print(event, c, value)
 --     end)
 -- end
-

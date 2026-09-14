@@ -765,7 +765,7 @@ function Module:CreateChangelogFrame()
 
     local backdropTemplate = BackdropTemplateMixin and 'BackdropTemplate' or nil
     local frameRef = CreateFrame('Frame', 'DragonflightUILunaChangelogFrame', UIParent, backdropTemplate)
-    frameRef:SetSize(680, 560)
+    frameRef:SetSize(560, 440)
     frameRef:SetPoint('CENTER')
     frameRef:SetFrameStrata('DIALOG')
     frameRef:SetToplevel(true)
@@ -786,7 +786,6 @@ function Module:CreateChangelogFrame()
     if frameRef.SetPropagateMouseMotion then frameRef:SetPropagateMouseMotion(false) end
     if frameRef.SetBackdrop then
         frameRef:SetBackdrop({
-            bgFile = 'Interface\\DialogFrame\\UI-DialogBox-Background',
             edgeFile = 'Interface\\DialogFrame\\UI-DialogBox-Border',
             tile = true,
             tileSize = 32,
@@ -795,12 +794,11 @@ function Module:CreateChangelogFrame()
         })
     end
 
-    -- Keep the normal Edit Mode world brightness unchanged. Only the
-    -- changelog panel receives the stronger dark fill for text readability.
+    -- Translucent background; keep text and controls fully opaque.
     local darkBackground = frameRef:CreateTexture(nil, 'BACKGROUND', nil, 1)
     darkBackground:SetPoint('TOPLEFT', frameRef, 'TOPLEFT', 12, -12)
     darkBackground:SetPoint('BOTTOMRIGHT', frameRef, 'BOTTOMRIGHT', -12, 11)
-    darkBackground:SetColorTexture(0.015, 0.015, 0.015, 0.94)
+    darkBackground:SetColorTexture(0.015, 0.015, 0.015, 0.72)
 
     local logo = frameRef:CreateTexture(nil, 'ARTWORK')
     logo:SetTexture('Interface\\AddOns\\DragonflightUI\\Textures\\Art\\luna-logo')
@@ -819,139 +817,76 @@ function Module:CreateChangelogFrame()
     notice:SetPoint('RIGHT', frameRef, 'RIGHT', -24, 0)
     notice:SetJustifyH('LEFT')
     notice:SetText(
-        'If you find any bugs, please whisper Femboybaddie in-game or join our Discord:')
+        'Found a bug or have feedback? Join our Discord:')
 
-    local discordLink = CreateFrame('Button', nil, frameRef)
-    discordLink:SetSize(285, 22)
-    discordLink:SetPoint('TOPLEFT', notice, 'BOTTOMLEFT', 0, -2)
-    discordLink:RegisterForClicks('LeftButtonUp')
-    local discordLinkText = discordLink:CreateFontString(nil, 'OVERLAY', 'GameFontHighlight')
-    discordLinkText:SetAllPoints()
-    discordLinkText:SetJustifyH('LEFT')
-    discordLinkText:SetText('|cff5865F2https://discord.gg/ZfYDHV6Qgs|r')
-    discordLink:SetScript('OnClick', function()
-        StaticPopup_Show('DragonflightUIDiscordInvite')
+    local discordLogo = frameRef:CreateTexture(nil, 'ARTWORK')
+    discordLogo:SetTexture('Interface\\AddOns\\DragonflightUI\\Textures\\Art\\discord')
+    discordLogo:SetSize(24, 24)
+    discordLogo:SetPoint('TOPLEFT', frameRef, 'TOPLEFT', 24, -86)
+    frameRef.DiscordLogo = discordLogo
+
+    local discordURL = 'https://discord.gg/ZfYDHV6Qgs'
+    local discordLink = CreateFrame('EditBox', nil, frameRef, 'InputBoxTemplate')
+    discordLink:SetSize(270, 20)
+    discordLink:SetPoint('TOPLEFT', frameRef, 'TOPLEFT', 60, -88)
+    discordLink:SetAutoFocus(false)
+    discordLink:SetFontObject(GameFontHighlight)
+    discordLink:SetText(discordURL)
+    discordLink:SetCursorPosition(0)
+    discordLink:SetScript('OnEditFocusGained', function(editBox)
+        editBox:HighlightText()
     end)
-    discordLink:SetScript('OnEnter', function()
-        discordLinkText:SetText('|cffffffffhttps://discord.gg/ZfYDHV6Qgs|r')
+    discordLink:SetScript('OnMouseUp', function(editBox)
+        editBox:HighlightText()
     end)
-    discordLink:SetScript('OnLeave', function()
-        discordLinkText:SetText('|cff5865F2https://discord.gg/ZfYDHV6Qgs|r')
+    discordLink:SetScript('OnTextChanged', function(editBox, userInput)
+        if userInput then
+            editBox:SetText(discordURL)
+            editBox:HighlightText()
+        end
     end)
+    discordLink:SetScript('OnEscapePressed', function(editBox) editBox:ClearFocus() end)
+    discordLink:SetScript('OnEnterPressed', function(editBox) editBox:ClearFocus() end)
+    frameRef:HookScript('OnHide', function() discordLink:ClearFocus() end)
+
+    local copyHint = frameRef:CreateFontString(nil, 'OVERLAY', 'GameFontHighlightSmall')
+    copyHint:SetPoint('LEFT', discordLink, 'RIGHT', 12, 0)
+    copyHint:SetText('Click + Ctrl+C to copy')
 
     local divider = frameRef:CreateTexture(nil, 'ARTWORK')
     divider:SetColorTexture(0.55, 0.42, 0.18, 0.75)
     divider:SetHeight(1)
-    divider:SetPoint('TOPLEFT', frameRef, 'TOPLEFT', 24, -99)
+    divider:SetPoint('TOPLEFT', frameRef, 'TOPLEFT', 24, -118)
     divider:SetPoint('RIGHT', frameRef, 'RIGHT', -24, 0)
 
     local scroll = CreateFrame('ScrollFrame', 'DragonflightUILunaChangelogScrollFrame', frameRef,
                                'UIPanelScrollFrameTemplate')
-    scroll:SetPoint('TOPLEFT', frameRef, 'TOPLEFT', 24, -112)
+    scroll:SetPoint('TOPLEFT', frameRef, 'TOPLEFT', 24, -130)
     scroll:SetPoint('BOTTOMRIGHT', frameRef, 'BOTTOMRIGHT', -38, 24)
 
     local content = CreateFrame('Frame', nil, scroll)
-    content:SetSize(595, 1)
+    content:SetSize(475, 1)
     scroll:SetScrollChild(content)
 
     local changelogText = content:CreateFontString(nil, 'OVERLAY', 'GameFontHighlightSmall')
     changelogText:SetPoint('TOPLEFT', content, 'TOPLEFT', 0, 0)
-    changelogText:SetWidth(595)
+    changelogText:SetWidth(475)
     changelogText:SetJustifyH('LEFT')
     changelogText:SetJustifyV('TOP')
     changelogText:SetSpacing(4)
     changelogText:SetText(table.concat({
-        '|cffffd200DragonflightUI_Luna V1.3 - 11 September 2026|r',
+        '|cffffd200DragonflightUI_Luna V1.3.1 - 15 September 2026|r',
         '',
-        '- Added a dismissible first-login update window with the Luna logo and Dragonflight UI Luna title; shown once per account per addon version, with combat-safe deferral.',
-        '- Restored Action Bar 1 click access by disabling mouse input on empty Blizzard bar backgrounds.',
-        '- Prevented duplicate Blizzard selection overlays for Luna-managed action bars, bags, stance, pet, possess and flight-path stop controls; kept these overlays non-interactive outside Edit Mode.',
-        '- Fixed bag-bar snapping after login, loading screens and native layout callbacks, including cached callbacks; restored bag scale and keyring orientation and deferred combat-time repairs.',
-        '- Kept chat position and size persistent through late native layout resets, login and loading screens; saved explicit moves and resizes without treating automatic resets as user changes, and preserved layouts whose coordinates match AceDB defaults.',
-        '- Prevented stale deferred Edit Mode callbacks from reopening or hiding frames after rapid mode changes or loading-screen cleanup.',
-        '- Deferred protected mover cleanup and flight-path button layout changes until combat ends, fixing the logged StopMovingOrSizing error.',
-        '- Preserved native flight-path stop button events and visibility, restored its Luna anchor after native layout changes, and avoided displaying a second preview beside the real button.',
-        '- Fixed the logged alternate mana-bar initialization error by detecting modern and legacy status-bar APIs and removing duplicate initialization.',
-        '- Updated addon metadata and the in-game changelog to V1.3; synchronized the installed package with the repository copyright notice.',
-        '- Added Lua 5.1 syntax checks and simulated regression coverage for layout persistence, input overlays, combat deferral, Edit Mode transitions and status-bar API compatibility.',
-        '',
-        '|cffffd200DragonflightUI_Luna V1.1 - 28 July 2026|r',
-        '',
-        '|cffffd200Combat and group safety|r',
-        "- Removed insecure refreshes of Blizzard's protected pooled party and raid frames.",
-        '- Fixed party members becoming untargetable after a member leaves.',
-        '- Deferred secure action-bar, bag, unit-frame, and state-driver layout work until combat ends.',
-        "- Split the full action-bar refresh across frames to prevent script-ran-too-long failures.",
-        '',
-        '|cffffd200Saved layout and visual stability|r',
-        '- Added persistent chat position and size storage across /reload and loading screens.',
-        "- Automatically saves chat moves made through Blizzard's chat controls or Edit Mode.",
-        '- Stabilized player and pet frame scaling.',
-        "- Prevented Blizzard's original cast bars from reappearing beside DragonflightUI cast bars.",
-        '- Kept primary action buttons attached to their DragonflightUI mover.',
-        '',
-        '|cffffd200HUD Edit Mode|r',
-        '- Restored missing action-bar and bottom-HUD selections for affected V1.0 profiles.',
-        '- Added stronger white selection fills while keeping the normal Edit Mode world brightness.',
-        '- Added a dedicated darker background only to the opened changelog panel.',
-        '- Fixed Edit Mode startup and deferred-refresh errors.',
-        '- Added the complete V1.1 release notes to the in-game changelog.',
-        '',
-        '|cffffd200Additional fixes|r',
-        '- Added safe action-range color fallbacks.',
-        '- Fixed invalid minimap ping units and minimap-button registration.',
-        '',
-        '|cffffd200DragonflightUI_Luna V1.0 - 24 July 2026|r',
-        '',
-        '|cffffd200Fork origin|r',
-        '- Prepared DragonflightUI_Luna as an independently maintained fork of Dragonflight UI Classic.',
-        '- Recorded the probable upstream base as Dragonflight UI Classic v0.40.3, commit b8b35451d4621a8097e887385f72ec03e17765f1.',
-        '- Preserved the original MIT notice, Copyright (c) 2022 Karl-HeinzSchneider.',
-        '- Added Copyright (c) 2026 Femboybaddie (modifications for DragonflightUI_Luna only).',
-        '- No ownership is claimed over unchanged upstream code, bundled third-party libraries, Blizzard materials, or other inherited third-party content.',
-        '',
-        '|cffffd200Classic Era compatibility|r',
-        '- Updated compatibility paths for current World of Warcraft Classic Era clients.',
-        '- Repaired obsolete API usage and protected-frame handling affected by client changes.',
-        '- Restored missing artwork references, icons, sharp text rendering, and pixel-aligned UI elements.',
-        '',
-        '|cffffd200HUD Edit Mode|r',
-        '- Added the transparent Luna project logo as a non-interactive image in the upper-left corner while Edit Mode is active.',
-        "- Integrated relevant DragonflightUI systems with Blizzard's Edit Mode window.",
-        '- Restored selectable and movable action bars, bag bar, micro menu, experience and reputation bars, cast bars, buffs, debuffs, unit frames, and other HUD systems.',
-        '- Added clearer selection areas, grid snapping, and center-alignment guides.',
-        '- Prevented gameplay actions from passing through Edit Mode overlays.',
-        '- Fixed overlapping values, duplicated labels, incorrect selection bounds, and asynchronous action-bar overlays.',
-        '- Added startup and reload cleanup for hidden Edit Mode input layers.',
-        '',
-        '|cffffd200Action bars and bottom HUD|r',
-        '- Reworked Classic Era action-bar registration, positioning, selection, and saved-layout restoration.',
-        '- Fixed bars appearing outside the screen or shifting after /reload.',
-        '- Corrected bag-bar layout, backpack sizing, micro-menu spacing, and bottom-right gaps.',
-        '- Fixed experience-bar visibility and position restoration.',
-        '',
-        '|cffffd200Unit, party, and raid frames|r',
-        '- Restored player, target, focus, pet, party, and raid-frame compatibility.',
-        '- Fixed party and raid frames not appearing while grouped.',
-        '- Corrected player power-bar layers, portrait artifacts, duplicate resource bars, and click regions.',
-        '',
-        '|cffffd200Combat UI|r',
-        '- Fixed duplicated buff and debuff containers and restored their Edit Mode controls.',
-        '- Restored cast-bar visuals, movement, selection bounds, and saved positions.',
-        '- Improved frame update flow while entering or leaving Edit Mode.',
-        '',
-        '|cffffd200Publication preparation|r',
-        '- Replaced copied upstream promotional text with an original DragonflightUI_Luna description.',
-        '- Added THIRD_PARTY_NOTICES.md, CONTRIBUTORS.md, CURSEFORGE_DESCRIPTION.md, ASSET_PROVENANCE.md, and a generated asset hash manifest.',
-        '- Removed the in-game donation link, supporter-benefit wording, and the unused coffee artwork.',
-        "- Removed the upstream CurseForge project ID from DragonflightUI_Luna's TOC metadata to avoid false project association.",
-        '- Added a distinct DragonflightUI_Luna project avatar and recorded its AI-generated origin.',
-        '- Standardized the final distribution archive name as DragonflightUI_Luna.zip.',
-        '- Retained third-party license files and copyright notices without shortening or relicensing them.',
-        '- Added missing standard XML namespace declarations to the bundled LibTradeSkillRecipes loader without changing its loaded scripts.',
-        '',
-        '|cffffd200Feedback|r',
-        '- Compatibility reports may be submitted through https://discord.gg/ZfYDHV6Qgs.'
+        '- Fixed player and target frame position and scale resets after native layout changes, loading screens and frame visibility changes.',
+        '- Added combat-safe anchor recovery without changing native unit-frame or possess-bar visibility.',
+        '- Fixed the possess bar being stuck in the upper-left corner by connecting the current Blizzard bar to a dedicated movable Luna Edit Mode anchor; preserved saved positions and added custom-anchor support.',
+        '- Prevented the reputation bar from flashing green at its temporary center position before the saved layout is applied.',
+        '- Updated addon metadata to 1.3.1 and Classic Era compatibility metadata to Interface 11509 for the installed WoW 1.15.9 client.',
+        '- Updated the in-game changelog and added simulated regression checks for frame anchoring, possess-bar movement, combat recovery and reputation-bar initialization.',
+        "- Changed the changelog popup to display only the current update's release notes; previous versions remain available in CHANGELOG.md.",
+        '- Made the changelog window smaller with a translucent background and added a selectable Discord invite link with copy instructions for bug reports.',
+        '- Added the Discord logo beside the invite link, darkened the translucent changelog background, and replaced the whisper instructions with a Discord-only bug and feedback invitation.',
+        '- Restored the existing project copyright notices in the packaged LICENSE file.'
     }, '\n'))
     content:SetHeight(math.max(scroll:GetHeight(), changelogText:GetStringHeight() + 16))
 

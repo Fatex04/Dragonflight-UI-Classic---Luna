@@ -252,3 +252,81 @@ DF.db.global.lastUpdateNoticeVersion='1.1.0'; Module:ShowLoginUpdateNotice()
 assert(Module:CreateChangelogFrame():IsShown())
 ''')
 print('PASS: update notice once per version/account, profile independence, combat/edit deferral')
+
+lua.execute('''
+Helper = {}
+function CreateFrame()
+    local f = makeFrame('event')
+    function f:RegisterEvent() end
+    function f:SetScript(event, fn) self.scripts[event] = fn end
+    return f
+end
+function geometryFrame(name)
+    local f = makeFrame(name)
+    function f:GetScale() return self.scale end
+    function f:GetNumPoints() return #self.point == 0 and 0 or 1 end
+    return f
+end
+''')
+lua.execute(section('Helper.lua', 'function Helper:KeepFrameAnchored(', 'function Helper:Benchmark('))
+lua.execute('''
+combat=false
+local mover=geometryFrame('mover')
+local native=geometryFrame('native')
+Helper:KeepFrameAnchored(native,mover,1,UIParent)
+native:SetPoint('TOPLEFT',UIParent,'TOPLEFT',40,-20)
+native:SetScale(1.5); native:SetParent(mover); flush()
+assert(native.point[2]==mover and native.point[1]=='CENTER')
+assert(native.scale==1 and native.parent==UIParent)
+combat=true
+native:ClearAllPoints(); native:SetScale(2); flush()
+assert(#native.point==0 and native.scale==2)
+combat=false
+native.DFLunaAnchorGuard.events.scripts.OnEvent(); flush()
+assert(native.point[2]==mover and native.scale==1)
+local replacement=geometryFrame('replacement')
+native:SetPoint('TOPLEFT',UIParent,'TOPLEFT',0,0)
+Helper:KeepFrameAnchored(native,replacement,0.8,UIParent); flush()
+assert(native.point[2]==replacement and native.scale==0.8)
+native:Hide(); flush(); assert(not native:IsShown())
+native:Show(); flush(); assert(native.point[2]==replacement)
+''')
+print('PASS: native anchor/scale/parent resets, combat recovery, latest settings and native visibility')
+
+lua.execute('''
+PossessBarFrame=geometryFrame('possessMover')
+NativePossessBar=geometryFrame('possessNative')
+PossessActionBar=NativePossessBar
+Module={db={profile={}}}
+DF={Settings={ValidateFrame=function(name) return name and _G[name]~=nil end}}
+function GetNumShapeshiftForms() return 0 end
+''')
+lua.execute(section('Modules/Actionbar/Actionbar.lua', 'function Module.UpdatePossesbarState(', '-- function Module:ActivateAllActionbars()'))
+lua.execute('''
+local state={anchorFrame='UIParent',anchor='BOTTOMLEFT',anchorParent='BOTTOMLEFT',x=90,y=120,scale=1.2}
+Module.UpdatePossesbarState(state); flush()
+assert(PossessBarFrame.point[4]==90 and NativePossessBar.point[2]==PossessBarFrame)
+NativePossessBar:SetPoint('TOPLEFT',UIParent,'TOPLEFT',0,0); flush()
+assert(NativePossessBar.point[2]==PossessBarFrame)
+combat=true; state.x=240; Module.UpdatePossesbarState(state)
+assert(Module.PendingPossessState and PossessBarFrame.point[4]==90)
+combat=false; Module.UpdatePossesbarState(state); flush()
+assert(not Module.PendingPossessState and PossessBarFrame.point[4]==240)
+''')
+print('PASS: modern possess bar follows mover, survives native resets and defers combat moves')
+
+lua.execute('DragonflightUIRepBarMixin = {}')
+lua.execute(section('Mixin/Statusbar.mixin.lua', 'function DragonflightUIRepBarMixin:OnLoad()', 'function DragonflightUIRepBarMixin:OnEvent('))
+lua.execute('''
+local rep=makeFrame('rep')
+function rep:CreateBar() self:SetPoint('CENTER',UIParent,'CENTER',0,0) end
+function rep:SetupTooltip() end
+function rep:InitStateHandler() end
+function rep:RegisterEvent() end
+function rep:SetScript() end
+function rep:OnEvent() assert(not self:IsShown(), 'reputation startup flash') end
+function Mixin() end
+DragonflightUIRepBarMixin.OnLoad(rep)
+assert(not rep:IsShown())
+''')
+print('PASS: reputation bar stays hidden at its temporary startup center anchor')

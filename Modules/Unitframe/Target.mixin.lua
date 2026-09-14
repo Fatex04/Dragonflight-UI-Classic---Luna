@@ -718,6 +718,7 @@ function SubModuleMixin:Update()
     f_orig:ClearAllPoints()
     f_orig:SetPoint('CENTER', f, 'CENTER', 0, 0)
     f_orig:SetScale(state.scale)
+    Helper:KeepFrameAnchored(f_orig, f, state.scale, UIParent)
 
     if DF.API.Version.IsTBC then
     else
@@ -1343,4 +1344,3 @@ function SubModuleMixin:CreatThreatIndicator()
     indi:SetScript('OnEvent', UpdateIndicator)
     UpdateIndicator()
 end
-

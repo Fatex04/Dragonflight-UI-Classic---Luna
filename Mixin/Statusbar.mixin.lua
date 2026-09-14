@@ -329,6 +329,8 @@ DragonflightUIRepBarMixin = {}
 
 function DragonflightUIRepBarMixin:OnLoad()
     self:CreateBar()
+    -- The initial CENTER anchor is temporary until the profile is applied.
+    self:Hide()
     self:SetupTooltip()
     -- self:Update()
     Mixin(self, DragonflightUIStateHandlerMixin)

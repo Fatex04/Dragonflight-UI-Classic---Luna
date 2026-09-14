@@ -9,7 +9,10 @@ local Module = DF:NewModule(mName, 'AceConsole-3.0', 'AceHook-3.0')
 local noop = function()
 end
 
-local PossessBarFrame = PossessBarFrame or CreateFrame('Frame', 'FAKEPOSSES', UIParent)
+local NativePossessBar = _G.PossessActionBar or _G.PossessBarFrame
+local PossessBarFrame = CreateFrame('Frame', 'DragonflightUIPossessBar', UIParent)
+PossessBarFrame:SetSize(80, 38)
+PossessBarFrame:SetMovable(true)
 
 Mixin(Module, DragonflightUIModulesMixin)
 
@@ -2593,8 +2596,8 @@ function Module:AddEditMode()
 
     PossessBarFrame.DFEditModeSelection:ClearAllPoints()
     local possessDelta = 4
-    PossessBarFrame.DFEditModeSelection:SetPoint('TOPLEFT', _G['PossessButton1'], 'TOPLEFT', -possessDelta, possessDelta)
-    PossessBarFrame.DFEditModeSelection:SetPoint('BOTTOMRIGHT', _G['PossessButton2'], 'BOTTOMRIGHT', possessDelta,
+    PossessBarFrame.DFEditModeSelection:SetPoint('TOPLEFT', PossessBarFrame, 'TOPLEFT', -possessDelta, possessDelta)
+    PossessBarFrame.DFEditModeSelection:SetPoint('BOTTOMRIGHT', PossessBarFrame, 'BOTTOMRIGHT', possessDelta,
                                                  -possessDelta)
 
     -- Stance 
@@ -3296,16 +3299,28 @@ function Module.MoveTotem()
 end
 
 function Module.UpdatePossesbarState(state)
+    if InCombatLockdown() then
+        Module.PendingPossessState = true
+        return
+    end
     PossessBarFrame.ignoreFramePositionManager = true
+    Module.PendingPossessState = false
 
     local offset = (GetNumShapeshiftForms() > 0) and _G['DragonflightUIStancebar']:GetHeight() or 0
     local offset = state.offset and offset or 0
 
     PossessBarFrame:ClearAllPoints()
-    local parent = _G[state.anchorFrame]
+    local parent = DF.Settings.ValidateFrame(state.customAnchorFrame) and _G[state.customAnchorFrame] or
+                       _G[state.anchorFrame] or UIParent
     PossessBarFrame:SetPoint(state.anchor, parent, state.anchorParent, state.x, state.y + offset)
 
     PossessBarFrame:SetScale(state.scale)
+    NativePossessBar = _G.PossessActionBar or NativePossessBar or _G.PossessBarFrame
+    if NativePossessBar then
+        local width, height = NativePossessBar:GetSize()
+        if width and width > 0 and height and height > 0 then PossessBarFrame:SetSize(width, height) end
+        Helper:KeepFrameAnchored(NativePossessBar, PossessBarFrame, state.scale)
+    end
 end
 
 -- function Module:ActivateAllActionbars()
@@ -3354,6 +3369,7 @@ function frame:OnEvent(event, arg1)
         -- print('SETTINGS_LOADED')
         -- Module:CheckActionbarSettingsCVars()
     elseif event == 'PLAYER_REGEN_ENABLED' then
+        if Module.PendingPossessState then Module.UpdatePossesbarState(Module.db.profile.possess) end
         if Module.PendingNativeSelectionCleanup and Module.SuppressNativeSelections then
             Module.PendingNativeSelectionCleanup = false
             Module.SuppressNativeSelections()

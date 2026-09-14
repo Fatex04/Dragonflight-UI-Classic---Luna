@@ -1,5 +1,19 @@
 # DragonflightUI_Luna Changelog
 
+## DragonflightUI_Luna V1.3.1 - 15 September 2026
+
+- Fixed player and target frame position and scale resets after native layout changes, loading screens and frame visibility changes.
+- Added combat-safe anchor recovery without changing native unit-frame or possess-bar visibility.
+- Fixed the possess bar being stuck in the upper-left corner by connecting the current Blizzard bar to a dedicated movable Luna Edit Mode anchor; preserved saved positions and added custom-anchor support.
+- Prevented the reputation bar from flashing green at its temporary center position before the saved layout is applied.
+- Updated addon metadata to 1.3.1 and Classic Era compatibility metadata to Interface 11509 for the installed WoW 1.15.9 client.
+- Updated the in-game changelog and added simulated regression checks for frame anchoring, possess-bar movement, combat recovery and reputation-bar initialization.
+- Changed the changelog popup to display only the current update's release notes; previous versions remain available in CHANGELOG.md.
+- Made the changelog window smaller with a translucent background and added a selectable Discord invite link with copy instructions for bug reports.
+- Added the Discord logo beside the invite link, darkened the translucent changelog background, and replaced the whisper instructions with a Discord-only bug and feedback invitation.
+- Restored the existing project copyright notices in the packaged LICENSE file.
+
+
 ## DragonflightUI_Luna V1.3 - 11 September 2026
 
 - Added a dismissible first-login update window with the Luna logo and Dragonflight UI Luna title; shown once per account per addon version, with combat-safe deferral.

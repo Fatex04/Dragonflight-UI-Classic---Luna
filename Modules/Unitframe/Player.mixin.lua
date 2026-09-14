@@ -596,6 +596,7 @@ function SubModuleMixin:Update()
     f_orig:SetScale(1)
     f_orig:ClearAllPoints()
     f_orig:SetPoint('CENTER', f, 'CENTER', 0, 0)
+    Helper:KeepFrameAnchored(f_orig, f, 1, f)
 
     if DF.API.Version.IsTBC then
     else

@@ -18,3 +18,10 @@ Before considering a client test complete:
 - Test a druid's alternate mana bar in shapeshift form and check BugSack for new errors.
 
 Existing BugGrabber reports are historical. Compare new session errors without erasing the user's saved reports.
+
+V1.3.1 live checks:
+
+- Move player, target and possess selections in Edit Mode, close it, reload and cross a loading screen; verify the saved positions persist.
+- Change targets repeatedly and enter/leave combat; check positions, scale, click targeting and BugSack.
+- Activate possession (for example Mind Control), check that its buttons work and that the native bar disappears when possession ends.
+- Log in with a watched friendly faction and verify that no green reputation bar flashes in the center.
