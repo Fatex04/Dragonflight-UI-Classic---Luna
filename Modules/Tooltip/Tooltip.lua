@@ -1332,7 +1332,7 @@ function Module:UnitPlayerTooltip(self)
     Module:UpdateStatusbar(unit)
 
     local localizedClass, englishClass, classIndex = UnitClass(unit);
-    if not class then return end -- TODO
+    if not englishClass then return end
 
     local r, g, b = GameTooltip_UnitColor(unit)
     local cr, cg, cb, ca, chex = DF:GetClassColor(englishClass);
@@ -1409,7 +1409,7 @@ function Module:UnitPlayerTooltip(self)
         end
     end
 
-    if guild then
+    if guild and state.unitGuild then
         Module:AddUnitLine(self, unit, 3)
         Module:AddLocationLine(self, unit, 4)
     else

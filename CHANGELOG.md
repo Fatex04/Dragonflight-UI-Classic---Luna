@@ -1,5 +1,23 @@
 # DragonflightUI_Luna Changelog
 
+## DragonflightUI_Luna V1.3.2 - 9 November 2026
+
+- Fixed a player-tooltip class check that read an unrelated global instead of
+  `UnitClass`'s result, preventing Luna's class colors, names, realm, title and
+  guild options from applying. Missing class data is skipped safely.
+- Kept level/location rows aligned when a player's guild is hidden in the tooltip.
+- Restored channel tick markers on TBC, including rank-specific Arcane Missiles
+  counts. Missing or uncached spell names no longer cause nil table-key errors
+  during castbar loading; spell IDs and available localized names are supported.
+- Preserved the existing Era/SoD, Wrath and Cata/Mists channel tick counts.
+- Guarded optional season APIs and enums so their absence cannot abort version
+  initialization; Season of Discovery detection is retained when available.
+- Validated version-message payloads and release dates before comparisons or
+  replies, preventing Lua errors from incomplete messages or missing metadata.
+- Added focused Lua 5.1 regression cases alongside the existing layout checks.
+- Updated all Classic manifests and the in-game changelog to 1.3.2. Existing
+  profiles, layouts, client interface targets and artwork are retained.
+
 ## DragonflightUI_Luna V1.3.1 - 15 September 2026
 
 - Fixed player and target frame position and scale resets after native layout changes, loading screens and frame visibility changes.

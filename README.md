@@ -4,7 +4,7 @@ DragonflightUI_Luna is an independently maintained compatibility fork of Dragonf
 
 ## What DragonflightUI_Luna changes
 
-DragonflightUI_Luna keeps the established `DragonflightUI` addon folder, saved-variable name, and internal namespaces so existing profiles and texture references continue to work. The V1.1 package includes:
+DragonflightUI_Luna keeps the established `DragonflightUI` addon folder, saved-variable name, and internal namespaces so existing profiles and texture references continue to work. Version **1.3.2** fixes player tooltip options, TBC channel tick markers, missing-spell startup errors, optional season APIs and malformed version messages. The package includes:
 
 - compatibility work for current Classic Era clients;
 - fixes for protected-frame and legacy API changes;
@@ -13,7 +13,7 @@ DragonflightUI_Luna keeps the established `DragonflightUI` addon folder, saved-v
 - client-specific TOC files for Classic variants; and
 - publication, attribution, and third-party notice preparation.
 
-See [CHANGELOG.md](CHANGELOG.md) for the detailed V1.1 change record.
+See [CHANGELOG.md](CHANGELOG.md) for the release history.
 
 ## Usage
 

@@ -24,17 +24,24 @@ Version.InterfaceVersion = select(4, GetBuildInfo())
 ---@type boolean
 Version.IsClassic = (WOW_PROJECT_ID == WOW_PROJECT_CLASSIC) and (DF.InterfaceVersion < 20000)
 
---- Addon is running on Classic Season of Discovery client
----@type boolean
-Version.IsSoD = Version.IsClassic and C_Seasons.HasActiveSeason() and
-                    (C_Seasons.GetActiveSeason() == Enum.SeasonID.SeasonOfDiscovery)
-
 --- current Season ID, or 0 if no Season
 --- 
 --- https://warcraft.wiki.gg/wiki/API_C_Seasons.GetActiveSeason
 ---@type Enum.SeasonID
 Version.SeasonID = 0;
-if C_Seasons.HasActiveSeason() then Version.SeasonID = C_Seasons.GetActiveSeason() end
+local hasActiveSeason = false
+if C_Seasons and type(C_Seasons.HasActiveSeason) == 'function' and
+    type(C_Seasons.GetActiveSeason) == 'function' then
+    hasActiveSeason = C_Seasons.HasActiveSeason()
+    if hasActiveSeason then Version.SeasonID = C_Seasons.GetActiveSeason() or 0 end
+end
+
+local discoverySeason = Enum and Enum.SeasonID and Enum.SeasonID.SeasonOfDiscovery
+
+--- Addon is running on Classic Season of Discovery client
+---@type boolean
+Version.IsSoD = Version.IsClassic and hasActiveSeason and discoverySeason ~= nil and
+                    Version.SeasonID == discoverySeason
 
 --- Addon is running on Classic TBC client
 ---@type boolean

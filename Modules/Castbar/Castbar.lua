@@ -815,79 +815,56 @@ function Module.ChangeDefaultCastbar()
     if DF.Wrath or DF.API.Version.IsTBC then suppressDefaultCastbar(FocusFrameSpellBar) end
 end
 
-Module.ChannelTicks = DF.Cata and {
-    -- wl
-    [GetSpellInfo(5740)] = 4, -- rain of fire
-    -- [GetSpellInfo(5138)] = 5, -- drain mana
-    [GetSpellInfo(689)] = 5, -- drain life
-    [GetSpellInfo(1120)] = 5, -- drain soul
-    [GetSpellInfo(755)] = 10, -- health funnel
-    [GetSpellInfo(1949)] = 15, -- hellfire
-    -- priest
-    [GetSpellInfo(47540)] = 2, -- penance
-    [GetSpellInfo(15407)] = 3, -- mind flay
-    [GetSpellInfo(64843)] = 4, -- divine hymn
-    [GetSpellInfo(64901)] = 4, -- hymn of hope
-    [GetSpellInfo(48045)] = 5, -- mind sear
-    -- hunter
-    -- [GetSpellInfo(1510)] = 6, -- volley
-    -- druid
-    [GetSpellInfo(740)] = 4, -- tranquility
-    [GetSpellInfo(16914)] = 10, -- hurricane
-    -- mage
+Module.ChannelTicks = {}
+local channelTickSpells = {
+    [5740] = 4, -- rain of fire
+    [5138] = 5, -- drain mana
+    [689] = 5, -- drain life
+    [1120] = 5, -- drain soul
+    [755] = 10, -- health funnel
+    [1949] = 15, -- hellfire
+    [15407] = 3, -- mind flay
+    [1510] = 6, -- volley
+    [740] = 4, -- tranquility
+    [16914] = 10, -- hurricane
     [5143] = 3, -- arcane missiles rank 1
     [5144] = 4, -- arcane missiles rank 2
-    -- [GetSpellInfo(5145)] = 5, -- arcane missiles
-    [GetSpellInfo(10)] = 8 -- blizzard
-} or DF.Wrath and {
-    -- wl
-    [GetSpellInfo(5740)] = 4, -- rain of fire
-    [GetSpellInfo(5138)] = 5, -- drain mana
-    [GetSpellInfo(689)] = 5, -- drain life
-    [GetSpellInfo(1120)] = 5, -- drain soul
-    [GetSpellInfo(755)] = 10, -- health funnel
-    [GetSpellInfo(1949)] = 15, -- hellfire
-    -- priest
-    [GetSpellInfo(47540)] = 2, -- penance
-    [GetSpellInfo(15407)] = 3, -- mind flay
-    [GetSpellInfo(64843)] = 4, -- divine hymn
-    [GetSpellInfo(64901)] = 4, -- hymn of hope
-    [GetSpellInfo(48045)] = 5, -- mind sear
-    -- hunter
-    [GetSpellInfo(1510)] = 6, -- volley
-    -- druid
-    [GetSpellInfo(740)] = 4, -- tranquility
-    [GetSpellInfo(16914)] = 10, -- hurricane
-    -- mage
-    [5143] = 3, -- arcane missiles rank 1
-    [5144] = 4, -- arcane missiles rank 2
-    [GetSpellInfo(5145)] = 5, -- arcane missiles
-    [GetSpellInfo(10)] = 8 -- blizzard
-} or DF.Era and {
-    -- wl
-    [GetSpellInfo(5740)] = 4, -- rain of fire
-    [GetSpellInfo(5138)] = 5, -- drain mana
-    [GetSpellInfo(689)] = 5, -- drain life
-    [GetSpellInfo(1120)] = 5, -- drain soul
-    [GetSpellInfo(755)] = 10, -- health funnel
-    [GetSpellInfo(1949)] = 15, -- hellfire
-    -- priest
-    [GetSpellInfo(15407)] = 3, -- mind flay
-    [GetSpellInfo(402174)] = 2, -- penance
-    [GetSpellInfo(413259)] = 2, -- mind sear
-    -- hunter
-    [GetSpellInfo(1510)] = 6, -- volley
-    -- druid
-    [GetSpellInfo(740)] = 4, -- tranquility
-    [GetSpellInfo(16914)] = 10, -- hurricane
-    -- mage
-    [5143] = 3, -- arcane missiles rank 1
-    [5144] = 4, -- arcane missiles rank 2
-    [GetSpellInfo(5145)] = 5, -- arcane missiles
-    [GetSpellInfo(10)] = 8, -- blizzard,
-    [GetSpellInfo(401417)] = 3, -- regeneration
-    [GetSpellInfo(412510)] = 3 -- mass regeneration
+    [5145] = 5, -- higher arcane missiles ranks use the localized name
+    [10] = 8 -- blizzard
 }
+
+if DF.Cata then
+    channelTickSpells[5138] = nil
+    channelTickSpells[1510] = nil
+    channelTickSpells[5145] = nil
+end
+if DF.Cata or DF.Wrath then
+    channelTickSpells[47540] = 2 -- penance
+    channelTickSpells[64843] = 4 -- divine hymn
+    channelTickSpells[64901] = 4 -- hymn of hope
+    channelTickSpells[48045] = 5 -- mind sear
+elseif DF.Era then
+    channelTickSpells[402174] = 2 -- SoD penance
+    channelTickSpells[413259] = 2 -- SoD mind sear
+    channelTickSpells[401417] = 3 -- SoD regeneration
+    channelTickSpells[412510] = 3 -- SoD mass regeneration
+end
+
+-- Spell IDs keep loading safe when an optional spell is absent from the client
+-- or its name has not been cached. Localized names still cover higher ranks.
+for spellID, ticks in pairs(channelTickSpells) do
+    Module.ChannelTicks[spellID] = ticks
+    if spellID ~= 5143 and spellID ~= 5144 then
+        local name
+        if GetSpellInfo then
+            name = GetSpellInfo(spellID)
+        elseif C_Spell and C_Spell.GetSpellInfo then
+            local info = C_Spell.GetSpellInfo(spellID)
+            name = info and info.name
+        end
+        if name then Module.ChannelTicks[name] = ticks end
+    end
+end
 
 function Module.AddNewCastbar()
     local castbar = CreateFrame('StatusBar', 'DragonflightUIPlayerCastbar', UIParent,

@@ -8,6 +8,13 @@ local DFPlayer = UnitName('player')
 local DFTimestamp = C_AddOns.GetAddOnMetadata('DragonflightUI', 'X-Date')
 local newerVersionFound = false
 
+local function ReadTimestamp(value)
+    if type(value) ~= 'string' then return end
+    return tonumber(value:match('^%d%d%d%d%d%d%d%d$'))
+end
+
+local DFTimestampNumber = ReadTimestamp(DFTimestamp)
+
 function DF:InitVersionCheck()
     --  DF:Print('DF:InitVersionCheck()---------------')
     DF:RegisterComm(DFPrefix)
@@ -16,19 +23,22 @@ function DF:InitVersionCheck()
 end
 
 function DF:OnCommReceived(prefix, payload, distribution, sender)
-    if prefix ~= DFPrefix or sender == DFPlayer then return end
+    if prefix ~= DFPrefix or sender == DFPlayer or type(payload) ~= 'string' then return end
     -- print('OnCommReceived:', prefix, payload, distribution, sender)
 
     if payload == 'GIV VERSION' then
         --
-        DF:SendCommMessage(DFPrefix, 'DFTimestamp:' .. DFTimestamp, distribution, sender)
+        if DFTimestampNumber then
+            DF:SendCommMessage(DFPrefix, 'DFTimestamp:' .. DFTimestamp, distribution, sender)
+        end
         return
     end
 
     local k, v = strsplit(':', payload, 2)
     if k == 'DFTimestamp' then
         --   print('DFTimestamp', v)
-        if v > DFTimestamp and not newerVersionFound then
+        local timestamp = ReadTimestamp(v)
+        if timestamp and DFTimestampNumber and timestamp > DFTimestampNumber and not newerVersionFound then
             --
             newerVersionFound = true
         end

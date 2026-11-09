@@ -875,18 +875,15 @@ function Module:CreateChangelogFrame()
     changelogText:SetJustifyV('TOP')
     changelogText:SetSpacing(4)
     changelogText:SetText(table.concat({
-        '|cffffd200DragonflightUI_Luna V1.3.1 - 15 September 2026|r',
+        '|cffffd200DragonflightUI_Luna V1.3.2 - 9 November 2026|r',
         '',
-        '- Fixed player and target frame position and scale resets after native layout changes, loading screens and frame visibility changes.',
-        '- Added combat-safe anchor recovery without changing native unit-frame or possess-bar visibility.',
-        '- Fixed the possess bar being stuck in the upper-left corner by connecting the current Blizzard bar to a dedicated movable Luna Edit Mode anchor; preserved saved positions and added custom-anchor support.',
-        '- Prevented the reputation bar from flashing green at its temporary center position before the saved layout is applied.',
-        '- Updated addon metadata to 1.3.1 and Classic Era compatibility metadata to Interface 11509 for the installed WoW 1.15.9 client.',
-        '- Updated the in-game changelog and added simulated regression checks for frame anchoring, possess-bar movement, combat recovery and reputation-bar initialization.',
-        "- Changed the changelog popup to display only the current update's release notes; previous versions remain available in CHANGELOG.md.",
-        '- Made the changelog window smaller with a translucent background and added a selectable Discord invite link with copy instructions for bug reports.',
-        '- Added the Discord logo beside the invite link, darkened the translucent changelog background, and replaced the whisper instructions with a Discord-only bug and feedback invitation.',
-        '- Restored the existing project copyright notices in the packaged LICENSE file.'
+        '- Restored player tooltip class colors, names, titles, realm and guild options by fixing an incorrect class check.',
+        '- Removed the empty guild row when the guild display is disabled.',
+        '- Restored TBC channel tick markers, including the lower Arcane Missiles ranks.',
+        '- Prevented missing or uncached spell names from aborting castbar initialization; existing Era, Wrath and Cata tick counts are retained.',
+        '- Made season detection safe when a Classic client lacks season APIs or enums.',
+        '- Prevented malformed addon version messages or missing release dates from causing Lua errors.',
+        '- Existing profiles, layouts and artwork are retained.'
     }, '\n'))
     content:SetHeight(math.max(scroll:GetHeight(), changelogText:GetStringHeight() + 16))
 
